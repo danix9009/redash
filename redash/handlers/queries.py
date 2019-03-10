@@ -171,6 +171,12 @@ class BaseQueryListResource(BaseResource):
 
         return response
 
+def require_access_to_dropdown_queries(user, query_def):
+    parameters = query_def.get('options', {}).get('parameters', [])
+    dropdown_queries = [models.Query.get_by_id(p["queryId"]) for p in parameters if p["type"] == "query"]
+
+    for query in dropdown_queries:
+        require_access(query.data_source.groups, user, view_only)
 
 class QueryListResource(BaseQueryListResource):
     @require_permission('create_query')
@@ -210,6 +216,7 @@ class QueryListResource(BaseQueryListResource):
         query_def = request.get_json(force=True)
         data_source = models.DataSource.get_by_id_and_org(query_def.pop('data_source_id'), self.current_org)
         require_access(data_source.groups, self.current_user, not_view_only)
+        require_access_to_dropdown_queries(self.current_user, query_def)
 
         for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data', 'last_modified_by']:
             query_def.pop(field, None)
@@ -310,6 +317,7 @@ class QueryResource(BaseResource):
         query_def = request.get_json(force=True)
 
         require_object_modify_permission(query, self.current_user)
+        require_access_to_dropdown_queries(self.current_user, query_def)
 
         for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data', 'user', 'last_modified_by', 'org']:
             query_def.pop(field, None)
@@ -432,3 +440,44 @@ class QueryTagsResource(BaseResource):
                 for name, count in tags
             ]
         }
+
+
+class QueryFavoriteListResource(BaseResource):
+    def get(self):
+        search_term = request.args.get('q')
+
+        if search_term:
+            base_query = models.Query.search(search_term, self.current_user.group_ids, include_drafts=True, limit=None)
+            favorites = models.Query.favorites(self.current_user, base_query=base_query)
+        else:
+            favorites = models.Query.favorites(self.current_user)
+
+        favorites = filter_by_tags(favorites, models.Query.tags)
+
+        # order results according to passed order parameter,
+        # special-casing search queries where the database
+        # provides an order by search rank
+        ordered_favorites = order_results(favorites, fallback=bool(search_term))
+
+        page = request.args.get('page', 1, type=int)
+        page_size = request.args.get('page_size', 25, type=int)
+        response = paginate(
+            ordered_favorites,
+            page,
+            page_size,
+            QuerySerializer,
+            with_stats=True,
+            with_last_modified_by=False,
+        )
+
+        self.record_event({
+            'action': 'load_favorites',
+            'object_type': 'query',
+            'params': {
+                'q': search_term,
+                'tags': request.args.getlist('tags'),
+                'page': page
+            }
+        })
+
+        return response
