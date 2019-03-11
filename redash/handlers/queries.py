@@ -171,12 +171,14 @@ class BaseQueryListResource(BaseResource):
 
         return response
 
+
 def require_access_to_dropdown_queries(user, query_def):
     parameters = query_def.get('options', {}).get('parameters', [])
     dropdown_queries = [models.Query.get_by_id(p["queryId"]) for p in parameters if p["type"] == "query"]
 
     for query in dropdown_queries:
         require_access(query.data_source.groups, user, view_only)
+
 
 class QueryListResource(BaseQueryListResource):
     @require_permission('create_query')
