@@ -10,7 +10,7 @@ periodic_tasks = {}
 def init_extensions(app):
     """Load the Redash extensions for the given Redash Flask app.
 
-    The extension entry pooint can return any type of value but
+    The extension entry point can return any type of value but
     must take a Flask application object.
 
     E.g.::
