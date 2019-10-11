@@ -48,7 +48,11 @@ class Impala(BaseSQLQueryRunner):
                 },
                 "protocol": {
                     "type": "string",
-                    "title": "Please specify beeswax or hiveserver2"
+                    "extendedEnum": [
+                        {"value": "beeswax", "name": "Beeswax"},
+                        {"value": "hiveserver2", "name": "Hive Server 2"}
+                    ],
+                    "title": "Protocol"
                 },
                 "database": {
                     "type": "string"
@@ -134,5 +138,6 @@ class Impala(BaseSQLQueryRunner):
                 connection.close()
 
         return json_data, error
+
 
 register(Impala)

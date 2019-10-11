@@ -6,7 +6,7 @@ import { debounce, find } from 'lodash';
 import Input from 'antd/lib/input';
 import Select from 'antd/lib/select';
 import { Query } from '@/services/query';
-import { toastr } from '@/services/ng';
+import notification from '@/services/notification';
 import { QueryTagsControl } from '@/components/tags-control/TagsControl';
 
 const SEARCH_DEBOUNCE_DURATION = 200;
@@ -94,7 +94,7 @@ export function QuerySelector(props) {
     if (queryId) {
       query = find(searchResults, { id: queryId });
       if (!query) { // shouldn't happen
-        toastr.error('Something went wrong... Couldn\'t select query');
+        notification.error('Something went wrong...', 'Couldn\'t select query');
       }
     }
 
@@ -112,10 +112,10 @@ export function QuerySelector(props) {
       <div className="list-group">
         {searchResults.map(q => (
           <a
-            href="javascript:void(0)"
-            className={cx('list-group-item', { inactive: q.is_draft })}
+            className={cx('query-selector-result', 'list-group-item', { inactive: q.is_draft })}
             key={q.id}
             onClick={() => selectQuery(q.id)}
+            data-test={`QueryId${q.id}`}
           >
             {q.name}
             {' '}
@@ -146,11 +146,13 @@ export function QuerySelector(props) {
         notFoundContent={null}
         filterOption={false}
         defaultActiveFirstOption={false}
+        className={props.className}
+        data-test="QuerySelector"
       >
         {searchResults && searchResults.map((q) => {
           const disabled = q.is_draft;
           return (
-            <Option value={q.id} key={q.id} disabled={disabled}>
+            <Option value={q.id} key={q.id} disabled={disabled} className="query-selector-result" data-test={`QueryId${q.id}`}>
               {q.name}{' '}
               <QueryTagsControl isDraft={q.is_draft} tags={q.tags} className={cx('inline-tags-control', { disabled })} />
             </Option>
@@ -161,7 +163,7 @@ export function QuerySelector(props) {
   }
 
   return (
-    <React.Fragment>
+    <span data-test="QuerySelector">
       {selectedQuery ? (
         <Input value={selectedQuery.name} suffix={clearIcon} readOnly />
       ) : (
@@ -175,7 +177,7 @@ export function QuerySelector(props) {
       <div className="scrollbox" style={{ maxHeight: '50vh', marginTop: 15 }}>
         {searchResults && renderResults()}
       </div>
-    </React.Fragment>
+    </span>
   );
 }
 
@@ -183,12 +185,14 @@ QuerySelector.propTypes = {
   onChange: PropTypes.func.isRequired,
   selectedQuery: PropTypes.object, // eslint-disable-line react/forbid-prop-types
   type: PropTypes.oneOf(['select', 'default']),
+  className: PropTypes.string,
   disabled: PropTypes.bool,
 };
 
 QuerySelector.defaultProps = {
   selectedQuery: null,
   type: 'default',
+  className: null,
   disabled: false,
 };
 
